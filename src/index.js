@@ -1,6 +1,7 @@
+require("./index.css");
+
 $(function() {
   
-
   // Counter for load more products - Start with 20 by is the default render items
   var cont = 20;
   var numberCollection = 698;
