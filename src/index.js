@@ -154,14 +154,18 @@ $(function() {
       .fail(er => console.log("error"));
   }
 
+  
   $(window).scroll(function() {
-    if (
-      $(window).scrollTop() + $(window).height() >
-      $(document).height() - 1000
-    ) {
-      cont += 5;
-      loader.fadeIn(250);
-      getCollectionByNumber(numberCollection, cont);
+    var reqAvailable = true;
+    if(reqAvailable){
+      if (( $(window).scrollTop() + $(window).height() > $(document).height() - 500 ) && $(".main .product-item").length >= 15) {
+        reqAvailable = false;
+        cont += 5;
+        loader.fadeIn(250);
+        getCollectionByNumber(numberCollection, cont);
+      }else{
+        reqAvailable = true;
+      }
     }
   });
 });
