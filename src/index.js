@@ -3,7 +3,8 @@ require("./index.css");
 $(function() {
   // Counter for load more products - Start with 20 by is the default render items
   var cont = 20;
-  var numberCollection = 698;
+  // The first button must have the collection attribute with numeric value to handle it
+  var numberCollection = parseInt($(".search-filter:first-child").attr("collection"));
 
   $(".toys-brand").slick({
     infinite: true,
