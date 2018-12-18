@@ -95,6 +95,8 @@ $(function() {
     });
   }
 
+  
+
   $("#banner-with-popup-instructions .adaptive-image").on("click", function(e) {
     $("#instructions-to-buy").show();
   });
@@ -123,20 +125,64 @@ $(function() {
       .siblings()
       .removeClass("active");
     loader.fadeIn(250);
-    $(".product-shelf").empty();
+    $(".product-shelf ul").empty();
     getCollectionByNumber(numberCollection, 20);
   });
 
+  let $fValue;
+  let productIdFiltered;
   function getCollectionByNumber(number, quantity) {
+    //$(".product-shelf .product-prices__wrapper span.product-prices__value").hide();
     Aurora.getProductShelf(`fq=H:${number}`, 1, quantity, 20)
       .done(res => {
-        if (
-          res != "" &&
-          !$.isEmptyObject(res) &&
-          typeof res.activeElement == "undefined"
-        ) {
-          $(".product-shelf").html(res);
-          loader.fadeOut(250);
+        if ( res != "" && !$.isEmptyObject(res) && typeof res.activeElement == "undefined") {
+          
+            // Find necessary html (product list)
+            let products = $(res).find("> ul > li");
+            //products.find(".product-prices__wrapper").css("opacity",0)
+            
+            // Append it into the ul tag
+            $(elem.productShelf).find("ul:first").append(products);
+            
+            //$(".product-shelf").html(res);
+            //$(".product-shelf .product-prices__price--former-price").hide();
+
+            let defProductId = $(res).find("ul li .product-item");
+
+            // let $priceCont = $(".product-shelf .product-prices__wrapper");
+
+            // let $valuePrice = $priceCont.find(".product-prices__value").text().split("$");
+
+            for(let i=0;i<defProductId.length;i++){
+                productIdFiltered = defProductId.get( i ).getAttribute("data-id");
+
+                getUnitMultiplier(productIdFiltered).done(res => {
+                    let filterID = res[0].productId;
+                    let bestPrice = res[0].items[0].sellers[0].commertialOffer.Price;
+                    let regularPrice = res[0].items[0].sellers[0].commertialOffer.ListPrice;
+                    let calcPrice = Math.trunc(bestPrice * res[0].items[0].unitMultiplier);
+                    let calcRegPrice = Math.trunc(regularPrice * res[0].items[0].unitMultiplier);
+                    let last3Digits;
+                    let second3Digits;
+                    let firstDigits;
+                    let $best = $(`.product-item--${filterID}`).find("span.product-prices__value--best-price");
+                    let $regular = $(`.product-item--${filterID}`).find(".product-prices__price--former-price span.product-prices__value")
+
+                    if(calcRegPrice < 1000000){
+                        last3Digits = String(calcPrice).slice(-3);
+                        firstDigits = String(calcPrice).split(last3Digits)[0];
+
+                        last3DigitsReg = String(calcRegPrice).slice(-3);
+                        firstDigitsReg = String(calcRegPrice).split(last3DigitsReg)[0];
+
+                        $best.text("$ " + firstDigits + "." + last3Digits);
+                        $regular.text("$ " + firstDigitsReg + "." + last3DigitsReg);
+                    }
+
+                    products.find(".product-prices__wrapper").css("opacity",1);
+                  
+                });
+            }
 
           // Add flags
           var flagDiscount = $(".discount-percent");
@@ -149,9 +195,28 @@ $(function() {
               flagDiscount[i].style.display = "flex";
             }
           }
+          loader.fadeOut(250);
         }
       })
       .fail(er => console.log("error"));
+  }
+
+  function getUnitMultiplier(productId, xhr){
+    if (!xhr){
+        xhr = $.Deferred();
+    }
+
+    $.get("/api/catalog_system/pub/products/search?fq=productId:" + productId)
+      .done(res => xhr.resolve(res))
+      .fail(er => console.error(er))
+
+      let promise = xhr.promise();
+
+        promise.abort = function () {
+            request.abort();
+        }
+
+        return promise;
   }
 
   
