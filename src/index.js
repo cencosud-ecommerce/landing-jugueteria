@@ -5,6 +5,14 @@ $(function() {
   var cont = 20;
   // The first button must have the collection attribute with numeric value to handle it
   var numberCollection = parseInt($(".search-filter:first-child").attr("collection"));
+  let isRequesting = false;
+  let currentPage = 1;
+  let activeRequest = null;
+  let loader = $(elem.shelfLoader);
+  let loader_more = $(".loader_more .loader");
+  let limitReached = false;
+
+  loader.fadeIn(250);
 
   $(".toys-brand").slick({
     infinite: true,
@@ -49,23 +57,7 @@ $(function() {
     ]
   });
 
-  // Slider
-  /*const $slider = $('.swiper-wrapper');
-
-  if ($slider.is(':empty')) {
-  	$slider.hide().parent().addClass('empty');
-  } else if ($slider.children().length > 1) {
-    $slider.bxSlider({
-      prevText: '',
-      nextText: '',
-      auto: true
-    });
-  }*/
-
-  var loader = $(elem.shelfLoader);
-  loader.fadeIn(250);
-
-  getCollectionByNumber(numberCollection, 20);
+  getCollectionByNumber(numberCollection, currentPage, 15);
 
   $(document).on("click", elem.searchListFiltersSlideControls, function() {
     let t = $(this);
@@ -107,16 +99,20 @@ $(function() {
 
   // Handle events for Brands
   $(".container-brand-toys .slick-track").on("click", function(e) {
+    currentPage = 1;
+    limitReached = false;
     var $element = $(e.target).closest("li");
     cont = 20;
     numberCollection = parseInt($element.attr("collection"));
     loader.fadeIn(250);
-    $(".product-shelf").empty();
-    getCollectionByNumber(numberCollection, 20);
+    $(".product-shelf ul").empty();
+    getCollectionByNumber(numberCollection, currentPage, 20);
   });
 
   // Handle events for categories
   $(".shelf-header .search-list-filters").on("click", function(e) {
+    currentPage = 1;
+    limitReached = false;
     var $element = $(e.target).closest("button");
     cont = 20;
     numberCollection = parseInt($element.attr("collection"));
@@ -126,17 +122,22 @@ $(function() {
       .removeClass("active");
     loader.fadeIn(250);
     $(".product-shelf ul").empty();
-    getCollectionByNumber(numberCollection, 20);
+    getCollectionByNumber(numberCollection, currentPage, 20);
   });
 
   let $fValue;
   let productIdFiltered;
-  function getCollectionByNumber(number, quantity) {
-    //$(".product-shelf .product-prices__wrapper span.product-prices__value").hide();
-    Aurora.getProductShelf(`fq=H:${number}`, 1, quantity, 20)
+  function getCollectionByNumber(number, page, quantity) {
+    isRequesting = true;
+
+    if (activeRequest) {
+        activeRequest.abort();
+    }
+
+    Aurora.getProductShelf(`fq=H:${number}`, page, quantity, 18)
       .done(res => {
         if ( res != "" && !$.isEmptyObject(res) && typeof res.activeElement == "undefined") {
-          
+
             // Find necessary html (product list)
             let products = $(res).find("> ul > li");
             //products.find(".product-prices__wrapper").css("opacity",0)
@@ -144,14 +145,7 @@ $(function() {
             // Append it into the ul tag
             $(elem.productShelf).find("ul:first").append(products);
             
-            //$(".product-shelf").html(res);
-            //$(".product-shelf .product-prices__price--former-price").hide();
-
             let defProductId = $(res).find("ul li .product-item");
-
-            // let $priceCont = $(".product-shelf .product-prices__wrapper");
-
-            // let $valuePrice = $priceCont.find(".product-prices__value").text().split("$");
 
             for(let i=0;i<defProductId.length;i++){
                 productIdFiltered = defProductId.get( i ).getAttribute("data-id");
@@ -164,11 +158,12 @@ $(function() {
                     let calcRegPrice = Math.trunc(regularPrice * res[0].items[0].unitMultiplier);
                     let last3Digits;
                     let second3Digits;
+                    let second3DigitsReg;
                     let firstDigits;
                     let $best = $(`.product-item--${filterID}`).find("span.product-prices__value--best-price");
                     let $regular = $(`.product-item--${filterID}`).find(".product-prices__price--former-price span.product-prices__value")
 
-                    if(calcRegPrice < 1000000){
+                    if(calcRegPrice >= 100 && calcRegPrice < 1000000){
                         last3Digits = String(calcPrice).slice(-3);
                         firstDigits = String(calcPrice).split(last3Digits)[0];
 
@@ -177,6 +172,27 @@ $(function() {
 
                         $best.text("$ " + firstDigits + "." + last3Digits);
                         $regular.text("$ " + firstDigitsReg + "." + last3DigitsReg);
+
+                        if(filterID == "20025748" || filterID == "20025759"){
+                            $best.text("$ " + calcPrice);
+                            $regular.text("$ " + calcRegPrice);
+                        }
+                    }else if(calcRegPrice >= 1000000){
+
+                        last3Digits = String(calcPrice).slice(-3);
+                        second3Digits = String(calcPrice).slice(1,-3);
+                        firstDigits = String(calcPrice).split(second3Digits)[0];
+
+                        last3DigitsReg = String(calcRegPrice).slice(-3);
+                        second3DigitsReg = String(calcRegPrice).slice(1,-3);
+                        firstDigitsReg = String(calcRegPrice).split(last3DigitsReg)[0];
+
+                        $best.text("$ " + firstDigits  + "." + second3Digits + "." + last3Digits);
+                        $regular.text("$ " + firstDigitsReg + "." + second3DigitsReg + "." + last3DigitsReg);
+
+                    }else{
+                        $best.hide()
+                        $regular.hide()
                     }
 
                     products.find(".product-prices__wrapper").css("opacity",1);
@@ -196,9 +212,17 @@ $(function() {
             }
           }
           loader.fadeOut(250);
+          isRequesting = false;
+
+          if (res == "" || products.length < quantity) {
+            limitReached = true;
+
+            if (Aurora.isMobile())
+                $(".load-more-products").hide();
+            }
         }
       })
-      .fail(er => console.log("error"));
+      .fail(er => console.error("Error loading more products",error));
   }
 
   function getUnitMultiplier(productId, xhr){
@@ -219,18 +243,25 @@ $(function() {
         return promise;
   }
 
-  
   $(window).scroll(function() {
-    var reqAvailable = true;
-    if(reqAvailable){
-      if (( $(window).scrollTop() + $(window).height() > $(document).height() - 500 ) && $(".main .product-item").length >= 15) {
-        reqAvailable = false;
-        cont += 5;
-        loader.fadeIn(250);
-        getCollectionByNumber(numberCollection, cont);
-      }else{
-        reqAvailable = true;
-      }
-    }
-  });
+        if($(this).scrollTop() + window.innerHeight > $(elem.shelfContent).offset().top + $(elem.shelfContent).height() && !isRequesting && !limitReached ){
+
+            setTimeout(() => {
+                currentPage = currentPage + 1;
+            }, 500);
+            
+            // Activate loader when request are in course
+            loader.fadeIn(250);
+            loader_more.fadeIn(250);
+
+            getCollectionByNumber(numberCollection, currentPage, 15);
+            // Get the products
+
+            setTimeout(() => {
+                loader.fadeOut();
+                loader_more.fadeOut();
+            }, 3000);
+        }
+    });
+
 });
