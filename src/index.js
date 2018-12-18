@@ -140,29 +140,35 @@ $(function() {
 
             // Find necessary html (product list)
             let products = $(res).find("> ul > li");
-            //products.find(".product-prices__wrapper").css("opacity",0)
-            
+
             // Append it into the ul tag
             $(elem.productShelf).find("ul:first").append(products);
             
+            // Get the elements for filter the product ID
             let defProductId = $(res).find("ul li .product-item");
 
-            for(let i=0;i<defProductId.length;i++){
+            // Go throw the elements
+            for(let i=0; i < defProductId.length; i++){
+
+                // Find the attribute data-id for each one
                 productIdFiltered = defProductId.get( i ).getAttribute("data-id");
 
+                // Promise to filter characteristic based on Product ID
                 getUnitMultiplier(productIdFiltered).done(res => {
-                    let filterID = res[0].productId;
-                    let bestPrice = res[0].items[0].sellers[0].commertialOffer.Price;
-                    let regularPrice = res[0].items[0].sellers[0].commertialOffer.ListPrice;
-                    let calcPrice = Math.trunc(bestPrice * res[0].items[0].unitMultiplier);
-                    let calcRegPrice = Math.trunc(regularPrice * res[0].items[0].unitMultiplier);
-                    let last3Digits;
-                    let second3Digits;
-                    let second3DigitsReg;
-                    let firstDigits;
-                    let $best = $(`.product-item--${filterID}`).find("span.product-prices__value--best-price");
+                    let filterID = res[0].productId; // Product ID
+                    let bestPrice = res[0].items[0].sellers[0].commertialOffer.Price; // Best Price (green)
+                    let regularPrice = res[0].items[0].sellers[0].commertialOffer.ListPrice; // Regular Price (gray)
+                    let calcPrice = Math.trunc(bestPrice * res[0].items[0].unitMultiplier); // Best price with unit multiplier
+                    let calcRegPrice = Math.trunc(regularPrice * res[0].items[0].unitMultiplier); // Regular price with unit multiplier
+
+                    // Variables to handle render per example first 3 digits from right to left + dot + next 3 digits + dot + final 3 digits 
+                    let last3Digits,second3Digits,second3DigitsReg,firstDigits;
+
+                    // Filter element based on class witd ProductID
+                    let $best = $(`.product-item--${filterID}`).find("span.product-prices__value--best-price"); 
                     let $regular = $(`.product-item--${filterID}`).find(".product-prices__price--former-price span.product-prices__value")
 
+                    // When regular price are between 100 and 1.000.000
                     if(calcRegPrice >= 100 && calcRegPrice < 1000000){
                         last3Digits = String(calcPrice).slice(-3);
                         firstDigits = String(calcPrice).split(last3Digits)[0];
@@ -173,14 +179,21 @@ $(function() {
                         $best.text("$ " + firstDigits + "." + last3Digits);
                         $regular.text("$ " + firstDigitsReg + "." + last3DigitsReg);
 
+                        // Fix for specific products whom prices are wrong, render without points
                         if(filterID == "20025748" || filterID == "20025759"){
                             $best.text("$ " + calcPrice);
                             $regular.text("$ " + calcRegPrice);
                         }
+                        // When regular is greater or equal than 1.000.000
                     }else if(calcRegPrice >= 1000000){
 
+                        // 3 first digits from right to left
                         last3Digits = String(calcPrice).slice(-3);
+
+                        // 3 seconds digits from right to left
                         second3Digits = String(calcPrice).slice(1,-3);
+
+                        // Last items
                         firstDigits = String(calcPrice).split(second3Digits)[0];
 
                         last3DigitsReg = String(calcRegPrice).slice(-3);
@@ -195,6 +208,7 @@ $(function() {
                         $regular.hide()
                     }
 
+                    // Show prices
                     products.find(".product-prices__wrapper").css("opacity",1);
                   
                 });
@@ -214,6 +228,7 @@ $(function() {
           loader.fadeOut(250);
           isRequesting = false;
 
+          // TODO: Capture the total quantity of items and compare it
           if (res == "" || products.length < quantity) {
             limitReached = true;
 
@@ -225,6 +240,11 @@ $(function() {
       .fail(er => console.error("Error loading more products",error));
   }
 
+  /**
+   * 
+   * @param {String} productId - Product id filtered
+   * @param {HTTPRequest} xhr 
+   */
   function getUnitMultiplier(productId, xhr){
     if (!xhr){
         xhr = $.Deferred();
@@ -257,6 +277,7 @@ $(function() {
             getCollectionByNumber(numberCollection, currentPage, 15);
             // Get the products
 
+            // When there aren't more products to load turn off the loaders
             setTimeout(() => {
                 loader.fadeOut();
                 loader_more.fadeOut();
