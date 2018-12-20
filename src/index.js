@@ -160,16 +160,22 @@ $(function() {
                     let regularPrice = res[0].items[0].sellers[0].commertialOffer.ListPrice; // Regular Price (gray)
                     let calcPrice = Math.trunc(bestPrice * res[0].items[0].unitMultiplier); // Best price with unit multiplier
                     let calcRegPrice = Math.trunc(regularPrice * res[0].items[0].unitMultiplier); // Regular price with unit multiplier
+                    let discTMC = res[0].items[0].sellers[0].commertialOffer.Teasers[0];
 
                     // Variables to handle render per example first 3 digits from right to left + dot + next 3 digits + dot + final 3 digits 
-                    let last3Digits,second3Digits,second3DigitsReg,firstDigits;
+                    let last3Digits,second3Digits,second3DigitsReg,firstDigits,calcPriceTMC,first3TMC,second3DigitsTMC,last3DigitsTMC;
 
                     // Filter element based on class witd ProductID
                     let $best = $(`.product-item--${filterID}`).find("span.product-prices__value--best-price"); 
-                    let $regular = $(`.product-item--${filterID}`).find(".product-prices__price--former-price span.product-prices__value")
+                    let $regular = $(`.product-item--${filterID}`).find(".product-prices__price--former-price span.product-prices__value");
+                    let $tmc = $(`.product-item--${filterID}`).find(".product-prices__wrapper");
 
                     // When regular price are between 100 and 1.000.000
-                    if(calcRegPrice >= 100 && calcRegPrice < 1000000){
+                    if(calcPrice < 1000){
+                      $best.text("$ " + calcPrice);
+                      $regular.text("$ " + calcRegPrice);
+                    }
+                    if(calcRegPrice >= 1000 && calcRegPrice < 1000000 ){
                         last3Digits = String(calcPrice).slice(-3);
                         firstDigits = String(calcPrice).split(last3Digits)[0];
 
@@ -179,6 +185,17 @@ $(function() {
                         $best.text("$ " + firstDigits + "." + last3Digits);
                         $regular.text("$ " + firstDigitsReg + "." + last3DigitsReg);
 
+                        if(discTMC){
+                          calcPriceTMC = Math.trunc ( (parseFloat(discTMC["<Effects>k__BackingField"]["<Parameters>k__BackingField"][0]["<Value>k__BackingField"]) * regularPrice) / 100 );
+
+                          $(`.product-item--${filterID}` + " .product-prices__price--cencosud-price").remove();
+
+                          last3DigitsTMC = String(calcPriceTMC).slice(-3);
+                          first3TMC = String(calcPriceTMC).split(last3DigitsTMC)[0];
+
+                          $tmc.append(`<div class="product-prices__price product-prices__price--promo-price product-prices__price--cencosud-price"><span class="product-prices__value" style="color: #FF9700;">$ ${first3TMC}.${last3DigitsTMC} </span></div>`);  
+                        }
+                        
                         // Fix for specific products whom prices are wrong, render without points
                         if(filterID == "20025748" || filterID == "20025759"){
                             $best.text("$ " + calcPrice);
@@ -202,6 +219,19 @@ $(function() {
 
                         $best.text("$ " + firstDigits  + "." + second3Digits + "." + last3Digits);
                         $regular.text("$ " + firstDigitsReg + "." + second3DigitsReg + "." + last3DigitsReg);
+
+                        if(discTMC){
+                          calcPriceTMC = Math.trunc (parseFloat(discTMC["<Effects>k__BackingField"]["<Parameters>k__BackingField"][0]["<Value>k__BackingField"]) * regularPrice / 100 );
+                          
+                          $(`.product-item--${filterID}` + " .product-prices__price--cencosud-price").remove();
+
+                          last3DigitsTMC = String(calcPriceTMC).slice(-3);
+                          second3DigitsTMC = String(last3DigitsTMC).slice(1,-3);
+                          first3TMC = String(calcPriceTMC).split(last3DigitsTMC)[0];
+
+                          $tmc.append(`<div class="product-prices__price product-prices__price--promo-price product-prices__price--cencosud-price"><span class="product-prices__value" style="color: #FF9700;">$ ${first3TMC}.${second3DigitsTMC}.${last3DigitsTMC}</span></div>`);  
+                          
+                        }
 
                     }else{
                         $best.hide()
